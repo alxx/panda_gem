@@ -52,8 +52,8 @@ module Panda
       return p
     end
 
-    def self.create
-      response = request(:post, "/videos")
+    def self.create(params = {})
+      response = request(:post, "/videos", params)
       p = self.new_with_attrs(response[:video])
       return p
     end
@@ -61,6 +61,17 @@ module Panda
     def self.videos
       response = request(:get, "/videos")
       return response[:videos].map {|v| self.new_with_attrs(v[:video]) }
+    end
+    
+    # alxx - obliterate video
+    def obliterate
+      begin
+        response = Panda::Video.request(:post, "/videos/#{self.id}/destroy")
+      rescue
+        raise(Panda::ServerError.new(response))
+      else
+        self.destroy
+      end
     end
 
     # Makes request to remote service.
@@ -77,11 +88,20 @@ module Panda
         req = Net::HTTP::Post.new(path)
         req.form_data = params
         response = http.request(req)
+      when :delete # added by alxx
+        req = Net::HTTP::Delete.new(path)
+        req.form_data = params
+        response = http.request(req)
       end
   
-      puts "--> #{response.code} #{response.message} (#{response.body.length})"
-      puts response.body
-      handle_response(response)
+      unless response.nil?
+        puts "--> #{response.code} #{response.message} (#{response.body.length})"
+        puts response.body
+        handle_response(response)
+      else
+        puts "--> nil response!!"
+        nil
+      end
     end
 
     # Handles response and error codes from remote service.
@@ -97,7 +117,7 @@ module Panda
         when 500...600
           raise(Panda::ServerError.new(response))
         else
-          raise(Panda::PandaError.new(response, "Unknown response code: #{response.code}"))
+          raise(Panda::PandaError.new(response)) # only one argument supported - alxx
       end
     end
   end
@@ -113,7 +133,7 @@ module Panda
     end
 
     def to_s
-      "Failed with #{response.code} #{response.message if response.respond_to?(:message)}"
+      "Failed with #{response.code if response.respond_to?(:code)} #{response.message if response.respond_to?(:message)}"
     end
   end
   
