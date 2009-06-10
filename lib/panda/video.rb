@@ -66,11 +66,9 @@ module Panda
     # alxx - obliterate video
     def obliterate
       begin
-        response = Panda::Video.request(:post, "/videos/#{self.id}/destroy")
+        response = Panda::Video.request(:delete, "/videos/#{self.id}")
       rescue
         raise(Panda::ServerError.new(response))
-      else
-        self.destroy
       end
     end
 
